@@ -1,0 +1,18 @@
+{
+  "name": "dbsharding",
+  "version": "1.0.0",
+  "description": "# go to the source folder and make sure Docker file and init.sql files are there",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "consistent-hash": "^1.2.2",
+    "crypto": "^1.0.1",
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}
