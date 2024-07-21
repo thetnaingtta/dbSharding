@@ -1,78 +1,43 @@
 const app = require("express")();
-const { Client } = require("pg");
 const crypto = require("crypto");
+const { clients } = require("./clients");
+const SimpleConsistentHash = require("./simpleConsistentHash");
 
-class SimpleConsistentHash {
-    constructor() {
-      this.servers = [];
-    }
-  
-    add(servers) {
-      this.servers = servers;
-    }
-  
-    get(key) {
-      const hash = crypto.createHash("sha256").update(key).digest("hex");
-      const index = parseInt(hash, 16) % this.servers.length;
-      return this.servers[index];
-    }
-  }
-  
-  // Usage
-  const hr = new SimpleConsistentHash();
-  hr.add(["5432", "5433", "5434"]);
-
-
-const clients = {
-  5432 : new Client({
-    user: "postgres",
-    host: "localhost",
-    database: "postgres",
-    password: "postgres",
-    port: 5432,
-  }),
-  5433: new Client({
-    user: "postgres",
-    host: "localhost",
-    database: "postgres",
-    password: "postgres",
-    port: 5433,
-  }),
-  5434: new Client({
-    user: "postgres",
-    host: "localhost",
-    database: "postgres",
-    password: "postgres",
-    port: 5434,
-  }),
-};
+const hr = new SimpleConsistentHash();
+hr.add(Object.keys(clients)) ;
 
 async function connect() {
-  // for (const key in client) {
-  //     try {
-  //         await client[key].connect();
-  //         console.log(`Connected to ${key}`);
-  //     } catch (err) {
-  //         console.log(err);
-  //     }
-  // }
-
-
-  try {
-    await clients["5432"].connect();
-    console.log("Connected to 5432");
-    await clients["5433"].connect();
-    console.log("Connected to 5433");
-    await clients["5434"].connect();
-    console.log("Connected to 5434");
-  } catch (err) {
-    console.error("Connection error", err);
+  for (const key in clients) {
+    try {
+      await clients[key].connect();
+      console.log(`Connected to ${key}`);
+    } catch (err) {
+      console.log(err);
+    }
   }
-
 }
 
 app.get("/", (req, res) => {
   res.send("Hello World");
+});
+
+app.get("/:urlId", async (req, res) => {
+  const urlId = req.params.urlId;
+  const server = hr.get(urlId);
+
+  const result = await clients[server].query(
+    "Select url from URL_TABLE where url_id = $1",
+    [urlId]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ error: "URL not found" });
+  }
+
+  res.send({
+    url: result.rows[0].url,
+    server: server,
+  });
 });
 
 app.post("/post", async (req, res) => {
